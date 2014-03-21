@@ -6,7 +6,8 @@
 #define CHAR_LEN 7
 #define SS2 9
 #define SS3 6
-const int DisplayWord[] = {'H', 'E', 'L', 'L', 'O', '!', '!'};
+//const int DisplayWord[] = {'H', 'E', 'L', 'L', 'O', '!', '!'};
+const char DisplayWord[] = "HELLO!!";
 
 const byte SS_SET[] = {SS, SS2, SS3};
 const byte SS_SIZE = 3;
@@ -56,7 +57,7 @@ void loop() {
     offset = k * 8;
     for (j = 0; j < 8; j++) {
       idx = (index + offset + j) % TOTAL_LEN;
-      max7219(SS_SET[k], j + 1, fonts[DisplayWord[idx >> 3]][idx % 8]);
+      max7219(SS_SET[k], j + 1, fonts[(int)(DisplayWord[idx >> 3])][idx % 8]);
     }
   }
   delay(160);
