@@ -3,15 +3,10 @@
 
 #include "fonts.h"
 
-#define CHAR_LEN 7
-#define SS2 9
-#define SS3 6
-//const int DisplayWord[] = {'H', 'E', 'L', 'L', 'O', '!', '!'};
-const char DisplayWord[] = "HELLO!!";
-
-const byte SS_SET[] = {SS, SS2, SS3};
-const byte SS_SIZE = 3;
-const byte TOTAL_LEN = CHAR_LEN << 3;
+#define DELAY_INTERVAL 160
+char DisplayWord[] = "HELLO!!";
+const byte SS_SIZE = 2;
+const byte SS_SET[] = {10, 9, 8, 7, 6, 5, 4, 3, 2};
 
 const byte NOOP = 0x0;
 const byte DECODEMODE = 0x9;
@@ -19,7 +14,9 @@ const byte INTENSITY = 0xA;
 const byte SCANLIMIT = 0xB;
 const byte SHUTDOWN = 0xC;
 const byte DISPLAYTEST = 0xF;
+
 byte index = 0;
+byte TOTAL_LEN;
 
 void max7219(byte pin, byte reg, byte data) {
   digitalWrite(pin, LOW);
@@ -30,8 +27,13 @@ void max7219(byte pin, byte reg, byte data) {
 
 void setup() {
   byte k, i;
+  char *str = DisplayWord;
+  while(*str) {
+    str++;    
+  }
+  TOTAL_LEN = ((int)(str - DisplayWord)) << 3;
+
   for (k = 0; k < SS_SIZE; k++) {
-    
     pinMode(SS_SET[k], OUTPUT);
     digitalWrite(SS_SET[k], HIGH);
   }
@@ -54,13 +56,13 @@ void loop() {
   byte j, k, offset;
   int idx = 0;
   for (k = 0; k < SS_SIZE; k++) {
-    offset = k * 8;
+    offset = k << 3;
     for (j = 0; j < 8; j++) {
       idx = (index + offset + j) % TOTAL_LEN;
-      max7219(SS_SET[k], j + 1, fonts[(int)(DisplayWord[idx >> 3])][idx % 8]);
+      max7219(SS_SET[k], j + 1, fonts[(int)(DisplayWord[idx >> 3] - 32)][idx & 7]);
     }
   }
-  delay(160);
+  delay(DELAY_INTERVAL);
   index = (index + 1) % TOTAL_LEN;
 }
 
