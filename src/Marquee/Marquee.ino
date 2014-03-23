@@ -6,8 +6,8 @@
 #define DELAY_INTERVAL 160
 #define FLASH_INTERVAL 400
 #define FLASH_COUNT 2
-char *DisplayWords[] = {"HELLO!!", "Openlab.Taipei", "Honki!!"};
-const int INSTANCE_CNT = 3;
+char *DisplayWords[] = {"\033\034\035 \033\036\037 ", "Mom, I'm fine!"};
+const int INSTANCE_CNT = 2;
 const byte SS_SIZE = 3;
 const byte SS_SET[] = {10, 9, 8, 7, 6, 5, 4, 3};
 
@@ -83,7 +83,7 @@ void setup() {
 }
 
 void loop() {
-  byte j, k, offset;
+  byte j, k, offset, chr;
   int idx = 0, switchInput = digitalRead(2);
   unsigned long currTime = 0;
   if (switchInput == 1 && switchInput != switchFlag) {
@@ -97,7 +97,11 @@ void loop() {
     offset = k << 3;
     for (j = 0; j < 8; j++) {
       idx = (index + offset + j) % TOTAL_LEN;
-      max7219(SS_SET[k], j + 1, fonts[(int)(DisplayWord[idx >> 3] - 32)][idx & 7]);
+      chr = DisplayWord[idx >> 3];
+      if (chr < 27 || chr > 127) {
+        chr = ' ';
+      }
+      max7219(SS_SET[k], j + 1, fonts[(int)(chr - 27)][idx & 7]);
     }
   }
 
