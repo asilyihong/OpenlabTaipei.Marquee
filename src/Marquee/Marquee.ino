@@ -6,11 +6,12 @@
 #define DELAY_INTERVAL 160
 #define FLASH_INTERVAL 400
 #define FLASH_COUNT 2
-char *DisplayWords[] = {"\031\032\033\034 \031\035\036\037 ", "Mom, I'm fine!"};
+char *DisplayWords[] = {"\031\035\036\037 \031\032\033\034 ", "\027 \030 !"};
 const int INSTANCE_CNT = 2;
 const byte SS_SIZE = 3;
 const byte SS_SET[] = {10, 9, 8, 7, 6, 5, 4, 3};
 
+#define MIN_ASCII 23
 const byte NOOP = 0x0;
 const byte DECODEMODE = 0x9;
 const byte INTENSITY = 0xA;
@@ -98,10 +99,10 @@ void loop() {
     for (j = 0; j < 8; j++) {
       idx = (index + offset + j) % TOTAL_LEN;
       chr = DisplayWord[idx >> 3];
-      if (chr < 25 || chr > 127) {
+      if (chr < MIN_ASCII || chr > 127) {
         chr = ' ';
       }
-      max7219(SS_SET[k], j + 1, fonts[(int)(chr - 25)][idx & 7]);
+      max7219(SS_SET[k], j + 1, fonts[(int)(chr - MIN_ASCII)][idx & 7]);
     }
   }
 
