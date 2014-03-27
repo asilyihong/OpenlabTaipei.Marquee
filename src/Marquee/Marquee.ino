@@ -6,12 +6,16 @@
 #define DELAY_INTERVAL 160
 #define FLASH_INTERVAL 80
 #define FONT_SPACE 2
-#define SS_SIZE 3
-char *DisplayWords[] = {"\033\036\037 \033\034\035 ", "\031\032!"};
-const int INSTANCE_CNT = 2;
+#define SS_SIZE 2
+#define SWITCH_PIN 12
+char *DisplayWords[] = {"\026\027\030 ",
+                        "\033\036\037 \033\034\035 ",
+                        "\031\032!",
+                        "I love Taiwan! "};
+const int INSTANCE_CNT = 4;
 const byte SS_SET[] = {10, 9, 8, 7, 6, 5, 4, 3};
 
-#define MIN_ASCII 25
+#define MIN_ASCII 22
 #define BIT_CNT (SS_SIZE << 3)
 const byte NOOP = 0x0;
 const byte DECODEMODE = 0x9;
@@ -29,8 +33,38 @@ char *DisplayWord;
 unsigned long prevTime = 0;
 byte addBlank = 0;
 
+byte getNextByte() {
+  byte chr, res;
+  if (addBlank > 0) {
+    addBlank--;
+    res = 0;
+  } else {
+    chr = DisplayWord[index >> 3];
+    if (chr < MIN_ASCII || chr > 128) {
+      chr = ' ';
+    }
+
+    res = fonts[chr - MIN_ASCII][index & 7];
+    index = (index + 1) % TOTAL_LEN;
+    if (((index & 7) == 0) && chr < ' ') {
+      addBlank = FONT_SPACE;
+    }
+  }
+  return res;
+}
+
 void switchText(int idx, boolean needClear) {
   byte k, j, i, b, mask = 1;
+  byte chr;
+
+  index = 0;
+  DisplayWord = DisplayWords[idx];
+  char *str = DisplayWord;
+  while(*str) {
+    str++;
+  }
+  TOTAL_LEN = ((int)(str - DisplayWord)) << 3;
+
   if (needClear) {
     for (i = 0; i < 8; i++) {
       for (k = 0; k < SS_SIZE; k++) {
@@ -44,7 +78,7 @@ void switchText(int idx, boolean needClear) {
     }
   
     for (k = 0; k < BIT_CNT; k++) {
-      buffer[k] = 0xFF;
+      buffer[k] = getNextByte();
     }
 
     mask = 0xFF;
@@ -52,20 +86,12 @@ void switchText(int idx, boolean needClear) {
       mask >>=1;
       for (k = 0; k < SS_SIZE; k++) {
         for (j = 0; j < 8; j++) {
-          buffer[(k << 3) + j] &= mask;
-          max7219(SS_SET[k], j + 1, buffer[(k << 3) + j]);
+          max7219(SS_SET[k], j + 1, buffer[(k << 3) + j] | mask);
         }
       }
       delay(FLASH_INTERVAL);
     }
   }
-  DisplayWord = DisplayWords[idx];
-  char *str = DisplayWord;
-  while(*str) {
-    str++;
-  }
-  TOTAL_LEN = ((int)(str - DisplayWord)) << 3;
-  index = 0;
   prevTime = millis();
 }
 
@@ -79,7 +105,7 @@ void max7219(byte pin, byte reg, byte data) {
 void setup() {
   byte k, i;
 
-  pinMode(2, INPUT);
+  pinMode(SWITCH_PIN, INPUT);
   for (k = 0; k < SS_SIZE; k++) {
     pinMode(SS_SET[k], OUTPUT);
     digitalWrite(SS_SET[k], HIGH);
@@ -103,7 +129,7 @@ void setup() {
 
 void loop() {
   byte j, k, chr;
-  int switchInput = digitalRead(2);
+  int switchInput = digitalRead(SWITCH_PIN);
   unsigned long currTime = 0;
   if (switchInput == 1 && switchInput != switchFlag) {
     switchFlag = switchInput;
@@ -113,35 +139,20 @@ void loop() {
     switchFlag = switchInput;
   }
 
-  for (k = 0; k < SS_SIZE; k++) {
-    for (j = 0; j < 8; j++) {
-      max7219(SS_SET[k], j + 1, buffer[k * 8 + j]);
-    }
-  }
-
   currTime = millis();
   if (currTime - prevTime >= DELAY_INTERVAL) {
+    
+    for (k = 0; k < SS_SIZE; k++) {
+      for (j = 0; j < 8; j++) {
+        max7219(SS_SET[k], j + 1, buffer[k * 8 + j]);
+      }
+    }
     prevTime = currTime;
 
     for (k = 0; k < BIT_CNT - 1; k++) {
       buffer[k] = buffer[k + 1];
     }
 
-    if (addBlank < FONT_SPACE) {
-      buffer[BIT_CNT - 1] = 0;
-      addBlank++;
-    } else {
-      chr = DisplayWord[index >> 3];
-      if (chr < MIN_ASCII || chr > 127) {
-        chr = ' ';
-      }
-
-      buffer[BIT_CNT - 1] = fonts[chr - MIN_ASCII][index & 7];
-      index = (index + 1) % TOTAL_LEN;
-      if ((index & 7) == 0) {
-        addBlank = 0;
-      }
-    }
+    buffer[BIT_CNT - 1] = getNextByte();
   }
 }
-
