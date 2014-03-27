@@ -6,11 +6,12 @@
 #define DELAY_INTERVAL 160
 #define FLASH_INTERVAL 80
 #define FONT_SPACE 2
-#define SS_SIZE 2
+#define SS_SIZE 3
 #define SWITCH_PIN 12
-char *DisplayWords[] = {"\026\027\030 ",
-                        "\033\036\037 \033\034\035 ",
+ 
+char *DisplayWords[] = {"\033\036\037 \033\034\035 ",
                         "\031\032!",
+                        "\026\027\030 ",
                         "I love Taiwan! "};
 const int INSTANCE_CNT = 4;
 const byte SS_SET[] = {10, 9, 8, 7, 6, 5, 4, 3};
@@ -110,6 +111,7 @@ void setup() {
     pinMode(SS_SET[k], OUTPUT);
     digitalWrite(SS_SET[k], HIGH);
   }
+  Serial.begin(9600);
 
   SPI.begin();
   for (k = 0; k < SS_SIZE; k++) {
@@ -131,6 +133,10 @@ void loop() {
   byte j, k, chr;
   int switchInput = digitalRead(SWITCH_PIN);
   unsigned long currTime = 0;
+  Serial.print("switchInput: ");
+  Serial.print(switchInput);
+  Serial.print(",switchFlag: ");
+  Serial.println(switchFlag);
   if (switchInput == 1 && switchInput != switchFlag) {
     switchFlag = switchInput;
     instanceIdx = (instanceIdx + 1) % INSTANCE_CNT;
