@@ -7,13 +7,14 @@
 #define FLASH_INTERVAL 80
 #define FONT_SPACE 2
 #define SS_SIZE 3
-#define SWITCH_PIN 2
+#define SWITCH_PIN 12
  
 char *DisplayWords[] = {"\033\036\037 \033\034\035 ",
                         "\031\032!",
                         "\026\027\030 ",
-                        "I love Taiwan! "};
-const int INSTANCE_CNT = 4;
+                        "I love Taiwan! ",
+                        "We are Maker!"};
+const int INSTANCE_CNT = 5;
 const byte SS_SET[] = {10, 9, 8, 7, 6, 5, 4, 3};
 
 #define MIN_ASCII 22
@@ -46,7 +47,11 @@ byte getNextByte() {
     }
 
     res = fonts[chr - MIN_ASCII][index & 7];
-    index = (index + 1) % TOTAL_LEN;
+    if (chr == ' ') {
+      index = (index + 2) % TOTAL_LEN;
+    } else {
+      index = (index + 1) % TOTAL_LEN;
+    }
     if (((index & 7) == 0) && chr < ' ') {
       addBlank = FONT_SPACE;
     }
@@ -117,7 +122,7 @@ void setup() {
   for (k = 0; k < SS_SIZE; k++) {
     max7219(SS_SET[k], SCANLIMIT, 7);
     max7219(SS_SET[k], DECODEMODE, 0);
-    max7219(SS_SET[k], INTENSITY, 4);
+    max7219(SS_SET[k], INTENSITY, 8);
     max7219(SS_SET[k], DISPLAYTEST, 0);
     max7219(SS_SET[k], SHUTDOWN, 1);
       
