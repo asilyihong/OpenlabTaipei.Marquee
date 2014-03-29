@@ -3,7 +3,7 @@
 
 #include "fonts.h"
 
-// -- end configure area
+// -- start configure area
 #define DELAY_INTERVAL 160  // the speed of marquee
 #define FLASH_INTERVAL 80   // the speed of animation when change string
 #define FONT_SPACE 2        // how many blank lines between Chinese word
@@ -14,7 +14,6 @@ char *DisplayWords[] = {"\033\036\037 \033\034\035 ",
                         "\026\027\030 ",
                         "I love Taiwan! ",
                         "We are Maker! "};
-const int INSTANCE_CNT = 5;
 // -- end configure area
 
 #define SWITCH_PIN 12
@@ -28,6 +27,7 @@ const int INSTANCE_CNT = 5;
 #define DISPLAYTEST 0xF
 
 const byte SS_SET[] = {10, 9, 8, 7, 6, 5, 4, 3};
+const int INSTANCE_CNT = sizeof(DisplayWords) / sizeof(char*);
 byte buffer[SS_SIZE << 3] = {0};
 int switchFlag = 1;
 int instanceIdx = 0;
@@ -69,13 +69,13 @@ void switchText(int idx, boolean needAnimation) {
   }
   TOTAL_LEN = ((int)(str - DisplayWord)) << 3;
 
+//  sevenSegWrite(idx + 1);
   if (needAnimation) {
     for (i = 0; i < 8; i++) {
-      for (k = 0; k < SS_SIZE; k++) {
-        for (j = 0; j < 8; j++) {
-          max7219(SS_SET[k], j + 1, buffer[(k << 3) + j] | mask);
-        }
+      for (j = 0; j < BIT_CNT; j++) {
+        max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j] | mask);
       }
+
       mask <<= 1;
       mask |= 0x01;
       delay(FLASH_INTERVAL);
@@ -88,11 +88,10 @@ void switchText(int idx, boolean needAnimation) {
     mask = 0xFF;
     for (i = 0; i < 8; i++) {
       mask >>= 1;
-      for (k = 0; k < SS_SIZE; k++) {
-        for (j = 0; j < 8; j++) {
-          max7219(SS_SET[k], j + 1, buffer[(k << 3) + j] | mask);
-        }
+      for (j = 0; j < BIT_CNT; j++) {
+        max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j] | mask);
       }
+
       delay(FLASH_INTERVAL);
     }
   }
@@ -110,13 +109,11 @@ void setup() {
   byte k, i;
 
   pinMode(SWITCH_PIN, INPUT);
+//  sevenSegInit();
+  SPI.begin();
   for (k = 0; k < SS_SIZE; k++) {
     pinMode(SS_SET[k], OUTPUT);
     digitalWrite(SS_SET[k], HIGH);
-  }
-
-  SPI.begin();
-  for (k = 0; k < SS_SIZE; k++) {
     max7219(SS_SET[k], SCANLIMIT, 7);
     max7219(SS_SET[k], DECODEMODE, 0);
     max7219(SS_SET[k], INTENSITY, 8);
@@ -132,7 +129,7 @@ void setup() {
 }
 
 void loop() {
-  byte j, k, chr;
+  byte j, chr;
   int switchInput = digitalRead(SWITCH_PIN);
   unsigned long currTime = 0;
   if (switchInput == 1 && switchInput != switchFlag) { // detech press button and prevent reproduce trigger
@@ -146,17 +143,12 @@ void loop() {
   currTime = millis();
   if (currTime - prevTime >= DELAY_INTERVAL) {
     
-    for (k = 0; k < SS_SIZE; k++) {
-      for (j = 0; j < 8; j++) {
-        max7219(SS_SET[k], j + 1, buffer[k * 8 + j]);
-      }
+    for (j = 0; j < BIT_CNT - 1; j++) {
+      max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j]);
+      buffer[j] = buffer[j + 1];
     }
-    prevTime = currTime;
-
-    for (k = 0; k < BIT_CNT - 1; k++) {
-      buffer[k] = buffer[k + 1];
-    }
-
+    max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j]);
     buffer[BIT_CNT - 1] = getNextByte();
+    prevTime = currTime;
   }
 }
