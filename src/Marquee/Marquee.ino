@@ -3,37 +3,39 @@
 
 #include "fonts.h"
 
-#define DELAY_INTERVAL 160
-#define FLASH_INTERVAL 80
-#define FONT_SPACE 2
-#define SS_SIZE 3
-#define SWITCH_PIN 12
+// -- end configure area
+#define DELAY_INTERVAL 160  // the speed of marquee
+#define FLASH_INTERVAL 80   // the speed of animation when change string
+#define FONT_SPACE 2        // how many blank lines between Chinese word
+#define SS_SIZE 3           // how many LED matrix board
  
 char *DisplayWords[] = {"\033\036\037 \033\034\035 ",
-                        "\031\032!",
+                        "\031\032!! ",
                         "\026\027\030 ",
                         "I love Taiwan! ",
-                        "We are Maker!"};
+                        "We are Maker! "};
 const int INSTANCE_CNT = 5;
-const byte SS_SET[] = {10, 9, 8, 7, 6, 5, 4, 3};
+// -- end configure area
 
+#define SWITCH_PIN 12
 #define MIN_ASCII 22
 #define BIT_CNT (SS_SIZE << 3)
-const byte NOOP = 0x0;
-const byte DECODEMODE = 0x9;
-const byte INTENSITY = 0xA;
-const byte SCANLIMIT = 0xB;
-const byte SHUTDOWN = 0xC;
-const byte DISPLAYTEST = 0xF;
+#define NOOP 0x0
+#define DECODEMODE 0x9
+#define INTENSITY 0xA
+#define SCANLIMIT 0xB
+#define SHUTDOWN 0xC
+#define DISPLAYTEST 0xF
 
+const byte SS_SET[] = {10, 9, 8, 7, 6, 5, 4, 3};
 byte buffer[SS_SIZE << 3] = {0};
 int switchFlag = 1;
 int instanceIdx = 0;
 byte index = 0;
 byte TOTAL_LEN;
+byte addBlank = 0;
 char *DisplayWord;
 unsigned long prevTime = 0;
-byte addBlank = 0;
 
 byte getNextByte() {
   byte chr, res;
@@ -47,11 +49,7 @@ byte getNextByte() {
     }
 
     res = fonts[chr - MIN_ASCII][index & 7];
-    if (chr == ' ') {
-      index = (index + 2) % TOTAL_LEN;
-    } else {
-      index = (index + 1) % TOTAL_LEN;
-    }
+    index = (index + ((chr == ' ')? 2 : 1)) % TOTAL_LEN; // reduce the width when display space
     if (((index & 7) == 0) && chr < ' ') {
       addBlank = FONT_SPACE;
     }
@@ -59,37 +57,37 @@ byte getNextByte() {
   return res;
 }
 
-void switchText(int idx, boolean needClear) {
+void switchText(int idx, boolean needAnimation) {
   byte k, j, i, b, mask = 1;
   byte chr;
 
-  index = 0;
-  DisplayWord = DisplayWords[idx];
+  index = 0; // reset the index
+  DisplayWord = DisplayWords[idx]; // change the string will display
   char *str = DisplayWord;
-  while(*str) {
+  while(*str) { // count the string length
     str++;
   }
   TOTAL_LEN = ((int)(str - DisplayWord)) << 3;
 
-  if (needClear) {
+  if (needAnimation) {
     for (i = 0; i < 8; i++) {
       for (k = 0; k < SS_SIZE; k++) {
         for (j = 0; j < 8; j++) {
-          buffer[(k << 3) + j] |= mask;
-          max7219(SS_SET[k], j + 1, buffer[(k << 3) + j]);
+          max7219(SS_SET[k], j + 1, buffer[(k << 3) + j] | mask);
         }
       }
       mask <<= 1;
+      mask |= 0x01;
       delay(FLASH_INTERVAL);
     }
   
-    for (k = 0; k < BIT_CNT; k++) {
+    for (k = 0; k < BIT_CNT; k++) { // assign how to diaplsy words to buffer
       buffer[k] = getNextByte();
     }
 
     mask = 0xFF;
     for (i = 0; i < 8; i++) {
-      mask >>=1;
+      mask >>= 1;
       for (k = 0; k < SS_SIZE; k++) {
         for (j = 0; j < 8; j++) {
           max7219(SS_SET[k], j + 1, buffer[(k << 3) + j] | mask);
@@ -98,7 +96,7 @@ void switchText(int idx, boolean needClear) {
       delay(FLASH_INTERVAL);
     }
   }
-  prevTime = millis();
+  prevTime = millis(); // reset the prevTime
 }
 
 void max7219(byte pin, byte reg, byte data) {
@@ -116,7 +114,6 @@ void setup() {
     pinMode(SS_SET[k], OUTPUT);
     digitalWrite(SS_SET[k], HIGH);
   }
-  Serial.begin(9600);
 
   SPI.begin();
   for (k = 0; k < SS_SIZE; k++) {
@@ -138,11 +135,7 @@ void loop() {
   byte j, k, chr;
   int switchInput = digitalRead(SWITCH_PIN);
   unsigned long currTime = 0;
-  Serial.print("switchInput: ");
-  Serial.print(switchInput);
-  Serial.print(",switchFlag: ");
-  Serial.println(switchFlag);
-  if (switchInput == 1 && switchInput != switchFlag) {
+  if (switchInput == 1 && switchInput != switchFlag) { // detech press button and prevent reproduce trigger
     switchFlag = switchInput;
     instanceIdx = (instanceIdx + 1) % INSTANCE_CNT;
     switchText(instanceIdx, true);
