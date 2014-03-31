@@ -69,7 +69,6 @@ void switchText(int idx, boolean needAnimation) {
   }
   TOTAL_LEN = ((int)(str - DisplayWord)) << 3;
 
-  sevenSegWrite(idx + 1);
   if (needAnimation) {
     for (i = 0; i < 8; i++) {
       for (j = 0; j < BIT_CNT; j++) {
@@ -96,6 +95,7 @@ void switchText(int idx, boolean needAnimation) {
     }
   }
   prevTime = millis(); // reset the prevTime
+  setCurrIdx(idx + 1, prevTime);
 }
 
 void max7219(byte pin, byte reg, byte data) {
@@ -109,7 +109,7 @@ void setup() {
   byte k, i;
 
   pinMode(SWITCH_PIN, INPUT);
-  sevenSegInit();
+  idxInit();
   SPI.begin();
   for (k = 0; k < SS_SIZE; k++) {
     pinMode(SS_SET[k], OUTPUT);
@@ -151,4 +151,5 @@ void loop() {
     buffer[BIT_CNT - 1] = getNextByte();
     prevTime = currTime;
   }
+  ledBlink(currTime);
 }
