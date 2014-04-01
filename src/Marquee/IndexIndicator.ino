@@ -1,28 +1,25 @@
-#define LED_IDX_PIN 2
-#define LED_LLONG_INT 120
-#define LED_LONG_INT 120
-#define LED_SHORT_INT 40
-#define LED_DLEAY_INT 1000
+#ifdef LED_INDICATOR
 
 unsigned long prevLedTime = 0;
 int ledIdxMax = 0;
 int currLedIdx = 0;
-byte voltIdx = 0;
+byte voltIdx = LOW;
 
 void idxInit() {
   pinMode(LED_IDX_PIN, OUTPUT);
 }
 
 void setCurrIdx(int idx, unsigned long currTime) {
+  digitalWrite(LED_IDX_PIN, LOW);
   currLedIdx = ledIdxMax = idx;
-  voltIdx = 1;
+  voltIdx = HIGH;
   prevLedTime = currTime;
 }
 
 void ledRealBlink(unsigned long currTime, int timeInt, int interval) {
   if (currTime - prevLedTime > timeInt) {
     digitalWrite(LED_IDX_PIN, voltIdx);
-    voltIdx != voltIdx;
+    voltIdx = (voltIdx == HIGH)? LOW : HIGH;
     if (voltIdx) {
       currLedIdx -= interval;
     }
@@ -37,7 +34,8 @@ void ledBlink(unsigned long currTime) {
     ledRealBlink(currTime, LED_LONG_INT, 5);
   } else if (currLedIdx > 0) {
     ledRealBlink(currTime, LED_SHORT_INT, 1);
-  } else if (currTime - prevLedTime) {
+  } else if (currTime - prevLedTime > LED_DLEAY_INT) {
     currLedIdx = ledIdxMax;
   }
 }
+#endif // LED_INDICATOR

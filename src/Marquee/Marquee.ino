@@ -2,19 +2,7 @@
 #include <SPI.h>
 
 #include "fonts.h"
-
-// -- start configure area
-#define DELAY_INTERVAL 160  // the speed of marquee
-#define FLASH_INTERVAL 80   // the speed of animation when change string
-#define FONT_SPACE 2        // how many blank lines between Chinese word
-#define SS_SIZE 3           // how many LED matrix board
- 
-char *DisplayWords[] = {"\033\036\037 \033\034\035 ",
-                        "\031\032!! ",
-                        "\026\027\030 ",
-                        "I love Taiwan! ",
-                        "We are Maker! "};
-// -- end configure area
+#include "config.h"
 
 #define SWITCH_PIN 12
 #define MIN_ASCII 22
@@ -27,14 +15,14 @@ char *DisplayWords[] = {"\033\036\037 \033\034\035 ",
 #define DISPLAYTEST 0xF
 
 const byte SS_SET[] = {10, 9, 8, 7, 6, 5, 4, 3};
-const int INSTANCE_CNT = sizeof(DisplayWords) / sizeof(char*);
+const int INSTANCE_CNT = sizeof(DISPLAY_WORDS) / sizeof(char*);
 byte buffer[SS_SIZE << 3] = {0};
 int switchFlag = 1;
 int instanceIdx = 0;
 byte index = 0;
 byte TOTAL_LEN;
 byte addBlank = 0;
-char *DisplayWord;
+char *displayWord;
 unsigned long prevTime = 0;
 
 byte getNextByte() {
@@ -43,7 +31,7 @@ byte getNextByte() {
     addBlank--;
     res = 0;
   } else {
-    chr = DisplayWord[index >> 3];
+    chr = displayWord[index >> 3];
     if (chr < MIN_ASCII || chr > 128) {
       chr = ' ';
     }
@@ -62,12 +50,12 @@ void switchText(int idx, boolean needAnimation) {
   byte chr;
 
   index = 0; // reset the index
-  DisplayWord = DisplayWords[idx]; // change the string will display
-  char *str = DisplayWord;
+  displayWord = (char *)DISPLAY_WORDS[idx]; // change the string will display
+  char *str = displayWord;
   while(*str) { // count the string length
     str++;
   }
-  TOTAL_LEN = ((int)(str - DisplayWord)) << 3;
+  TOTAL_LEN = ((int)(str - displayWord)) << 3;
 
   if (needAnimation) {
     for (i = 0; i < 8; i++) {
@@ -95,7 +83,9 @@ void switchText(int idx, boolean needAnimation) {
     }
   }
   prevTime = millis(); // reset the prevTime
+#ifdef LED_INDICATOR
   setCurrIdx(idx + 1, prevTime);
+#endif // LED_INDICATOR
 }
 
 void max7219(byte pin, byte reg, byte data) {
@@ -109,7 +99,9 @@ void setup() {
   byte k, i;
 
   pinMode(SWITCH_PIN, INPUT);
+#ifdef LED_INDICATOR
   idxInit();
+#endif // LED_INDICATOR
   SPI.begin();
   for (k = 0; k < SS_SIZE; k++) {
     pinMode(SS_SET[k], OUTPUT);
@@ -151,5 +143,7 @@ void loop() {
     buffer[BIT_CNT - 1] = getNextByte();
     prevTime = currTime;
   }
+#ifdef LED_INDICATOR
   ledBlink(currTime);
+#endif // LED_INDICATOR
 }
