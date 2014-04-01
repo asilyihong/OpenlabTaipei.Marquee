@@ -9,6 +9,7 @@ char *DISPLAY_WORDS[] = {"\033\036\037 \033\034\035 ",
                          "\031\032!! ",
                          "\026\027\030 ",
                          "I love Taiwan! ",
+                         "Z>B ",
                          "We are Maker! "};
 
 #define LED_INDICATOR
