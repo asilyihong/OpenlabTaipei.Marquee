@@ -1,7 +1,8 @@
 // Main configuration
 #define DELAY_INTERVAL 160  // the speed of marquee
+#define DELAY_FINISH   2000
 #define FLASH_INTERVAL 80   // the speed of animation when change string
-#define FONT_SPACE 2        // how many blank lines between Chinese word
+#define FONT_SPACE 1        // how many blank lines between Chinese word
 #define SS_SIZE 3           // how many LED matrix board
 
 // Display characters
@@ -10,7 +11,8 @@ char *DISPLAY_WORDS[] = {"\033\036\037 \033\034\035 ",
                          "\026\027\030 ",
                          "I love Taiwan! ",
                          "Z>B ",
-                         "We are Maker! "};
+                         "We are Maker! ",
+                         "Openlab.Taipei "};
 
 #define LED_INDICATOR
 

@@ -17,8 +17,11 @@
 const byte SS_SET[] = {10, 9, 8, 7, 6, 5, 4, 3};
 const int INSTANCE_CNT = sizeof(DISPLAY_WORDS) / sizeof(char*);
 byte buffer[SS_SIZE << 3] = {0};
+byte headIdx = BIT_CNT;
 int switchFlag = 1;
 int instanceIdx = 0;
+int delayTime = DELAY_INTERVAL;
+boolean hasDelay = false;
 byte index = 0;
 byte TOTAL_LEN;
 byte addBlank = 0;
@@ -38,9 +41,17 @@ byte getNextByte() {
 
     res = fonts[chr - MIN_ASCII][index & 7];
     index = (index + ((chr == ' ')? 2 : 1)) % TOTAL_LEN; // reduce the width when display space
+    if (index == 0) {
+      headIdx = BIT_CNT + 1;
+    }
     if (((index & 7) == 0) && chr < ' ') {
       addBlank = FONT_SPACE;
     }
+  }
+  if (headIdx-- == 0) {
+    delayTime = DELAY_FINISH;
+  } else if (delayTime == DELAY_FINISH) {
+    delayTime = DELAY_INTERVAL;
   }
   return res;
 }
@@ -58,13 +69,13 @@ void switchText(int idx, boolean needAnimation) {
   TOTAL_LEN = ((int)(str - displayWord)) << 3;
 
   if (needAnimation) {
+    headIdx = 0;
     for (i = 0; i < 8; i++) {
       for (j = 0; j < BIT_CNT; j++) {
         max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j] | mask);
       }
 
-      mask <<= 1;
-      mask |= 0x01;
+      mask = (mask << 1) | 0x01;
       delay(FLASH_INTERVAL);
     }
   
@@ -81,6 +92,8 @@ void switchText(int idx, boolean needAnimation) {
 
       delay(FLASH_INTERVAL);
     }
+  } else {
+    headIdx = BIT_CNT;
   }
   prevTime = millis(); // reset the prevTime
 #ifdef LED_INDICATOR
@@ -123,7 +136,7 @@ void setup() {
 void loop() {
   byte j, chr;
   int switchInput = digitalRead(SWITCH_PIN);
-  unsigned long currTime = 0;
+  static unsigned long currTime = 0;
   if (switchInput == 1 && switchInput != switchFlag) { // detech press button and prevent reproduce trigger
     switchFlag = switchInput;
     instanceIdx = (instanceIdx + 1) % INSTANCE_CNT;
@@ -133,7 +146,7 @@ void loop() {
   }
 
   currTime = millis();
-  if (currTime - prevTime >= DELAY_INTERVAL) {
+  if (currTime - prevTime >= delayTime) {
     
     for (j = 0; j < BIT_CNT - 1; j++) {
       max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j]);
