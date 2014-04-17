@@ -14,6 +14,14 @@
 #define SHUTDOWN 0xC
 #define DISPLAYTEST 0xF
 
+#define SW_TXT_NONE 0
+#define SW_TXT_STEP_1 1
+#define SW_TXT_STEP_2 2
+#define SW_TXT_STEP_3 3
+
+#define DEF_ANIM_INTL FLASH_INTERVAL
+
+static unsigned long currTime = 0;
 const byte SS_SET[] = {10, 9, 8, 7, 6, 5, 4, 3};
 const int INSTANCE_CNT = sizeof(DISPLAY_WORDS) / sizeof(char*);
 byte buffer[SS_SIZE << 3] = {0};
@@ -27,6 +35,10 @@ byte TOTAL_LEN;
 byte addBlank = 0;
 char *displayWord;
 unsigned long prevTime = 0;
+
+byte switchTxtIdx = SW_TXT_NONE;
+unsigned long defAnimTime = 0;
+byte defAnimMask = 1;
 
 byte getNextByte() {
   byte chr, res;
@@ -56,10 +68,8 @@ byte getNextByte() {
   return res;
 }
 
-void switchText(int idx, boolean needAnimation) {
-  byte k, j, i, b, mask = 1;
-  byte chr;
-
+void initText(int idx) {
+  byte k;
   index = 0; // reset the index
   displayWord = (char *)DISPLAY_WORDS[idx]; // change the string will display
   char *str = displayWord;
@@ -68,36 +78,55 @@ void switchText(int idx, boolean needAnimation) {
   }
   TOTAL_LEN = ((int)(str - displayWord)) << 3;
 
-  if (needAnimation) {
-    headIdx = 0;
-    for (i = 0; i < 8; i++) {
-      for (j = 0; j < BIT_CNT; j++) {
-        max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j] | mask);
-      }
-
-      mask = (mask << 1) | 0x01;
-      delay(FLASH_INTERVAL);
-    }
-  
-    for (k = 0; k < BIT_CNT; k++) { // assign how to diaplsy words to buffer
-      buffer[k] = getNextByte();
-    }
-
-    mask = 0xFF;
-    for (i = 0; i < 8; i++) {
-      mask >>= 1;
-      for (j = 0; j < BIT_CNT; j++) {
-        max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j] | mask);
-      }
-
-      delay(FLASH_INTERVAL);
-    }
-  } else {
-    headIdx = BIT_CNT;
+  for (k = 0; k < BIT_CNT; k++) { // assign how to diaplsy words to buffer
+    buffer[k] = getNextByte();
   }
-  prevTime = millis(); // reset the prevTime
+}
+
+void switchText(int idx) {
+  byte k, j, i, b, chr, mask = 1;
+  char *str;
+  if ((switchTxtIdx != SW_TXT_NONE) && (currTime > defAnimTime)) {
+    switch(switchTxtIdx) {
+    case SW_TXT_STEP_1:
+      for (j = 0; j < BIT_CNT; j++) {
+        max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j] | defAnimMask);
+      }
+
+      defAnimMask = (defAnimMask << 1) | 0x01;
+      defAnimTime = currTime + DEF_ANIM_INTL;
+      if (defAnimMask == 0xFF) {
+        switchTxtIdx = SW_TXT_STEP_2;
+      }
+      break;
+    case SW_TXT_STEP_2:
+      initText(idx);
+      defAnimMask = 0xFF;
+      switchTxtIdx = SW_TXT_STEP_3;
+      for (j = 0; j < BIT_CNT; j++) {
+        max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j] | defAnimMask);
+      }
+      break;
+    case SW_TXT_STEP_3:
+      defAnimMask >>= 1;
+      for (j = 0; j < BIT_CNT; j++) {
+        max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j] | defAnimMask);
+      }
+
+      defAnimTime = currTime + DEF_ANIM_INTL;
+      if (defAnimMask == 0x0) {
+        switchTxtIdx = SW_TXT_NONE;
+        headIdx = 0;
+      }
+      break;
+    default:
+      break;
+    }
+  }
+
+  prevTime = millis() + DELAY_INTERVAL; // reset the prevTime
 #ifdef LED_INDICATOR
-  setCurrIdx(idx + 1, prevTime);
+  setCurrIdx(idx + 1, prevTime - DELAY_INTERVAL);
 #endif // LED_INDICATOR
 }
 
@@ -124,39 +153,45 @@ void setup() {
     max7219(SS_SET[k], INTENSITY, 8);
     max7219(SS_SET[k], DISPLAYTEST, 0);
     max7219(SS_SET[k], SHUTDOWN, 1);
-      
+
     for (i = 0; i < 8; i++) {
       max7219(SS_SET[k], i + 1, 0);
     }
   }
-  
-  switchText(0, false);
+
+  initText(0);
+  headIdx = BIT_CNT;
 }
 
 void loop() {
   byte j, chr;
   int switchInput = digitalRead(SWITCH_PIN);
-  static unsigned long currTime = 0;
   if (switchInput == 1 && switchInput != switchFlag) { // detech press button and prevent reproduce trigger
     switchFlag = switchInput;
-    instanceIdx = (instanceIdx + 1) % INSTANCE_CNT;
-    switchText(instanceIdx, true);
+    if (switchTxtIdx == SW_TXT_NONE || switchTxtIdx == SW_TXT_STEP_1) {
+      instanceIdx = (instanceIdx + 1) % INSTANCE_CNT;
+
+      switchTxtIdx = SW_TXT_STEP_1;
+    }
   } else if (switchInput != switchFlag) {
     switchFlag = switchInput;
   }
 
   currTime = millis();
-  if (currTime - prevTime >= delayTime) {
-    
-    for (j = 0; j < BIT_CNT - 1; j++) {
+  if (switchTxtIdx == SW_TXT_NONE) {
+    if (currTime >= prevTime) {
+      for (j = 0; j < BIT_CNT - 1; j++) {
+        max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j]);
+        buffer[j] = buffer[j + 1];
+      }
       max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j]);
-      buffer[j] = buffer[j + 1];
+      buffer[BIT_CNT - 1] = getNextByte();
+      prevTime = currTime + delayTime;
     }
-    max7219(SS_SET[j >> 3], (j & 7) + 1, buffer[j]);
-    buffer[BIT_CNT - 1] = getNextByte();
-    prevTime = currTime;
-  }
 #ifdef LED_INDICATOR
-  ledBlink(currTime);
+    ledBlink(currTime);
 #endif // LED_INDICATOR
+  } else {
+    switchText(instanceIdx);
+  }
 }
