@@ -6,13 +6,16 @@
 #define SS_SIZE 3           // how many LED matrix board
 
 // Display characters
-char *DISPLAY_WORDS[] = {"\033\036\037 \033\034\035 ",
-                         "\031\032!! ",
-                         "\026\027\030 ",
-                         "I love Taiwan! ",
-                         "Z>B ",
-                         "We are Maker! ",
-                         "Openlab.Taipei "};
+char *DISPLAY_WORDS[] = {
+        "\025HK",
+//        "\033\036\037 \033\034\035 ",
+//        "\031\032!! ",
+//        "\026\027\030 ",
+//        "I love Taiwan! ",
+//        "Z>B ",
+//        "We are Maker! ",
+//        "Openlab.Taipei "
+        };
 
 #define LED_INDICATOR
 

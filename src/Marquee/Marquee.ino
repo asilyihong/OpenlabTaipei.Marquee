@@ -5,7 +5,7 @@
 #include "config.h"
 
 #define SWITCH_PIN 12
-#define MIN_ASCII 22
+#define MIN_ASCII 21
 #define BIT_CNT (SS_SIZE << 3)
 #define NOOP 0x0
 #define DECODEMODE 0x9
